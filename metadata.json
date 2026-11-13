@@ -1,0 +1,6 @@
+{
+  "name": "HSC ’26 — আমার গল্প | Medix Prime",
+  "description": "HSC ’26 — আমার গল্প। তোমার দুই বছরের গল্প এক কার্ডে। Medix Prime পারসোনালাইজড জার্নি কার্ড জেনারেটর।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
