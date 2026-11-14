@@ -25,6 +25,7 @@ export interface StudentEntryData {
   studentClass: 'SSC' | 'HSC';
   institution: string;
   phone: string;
+  studentPhoto?: string;
   enteredAt: string;
 }
 

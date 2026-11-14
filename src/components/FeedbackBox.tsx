@@ -6,10 +6,13 @@ import {
   AlertCircle,
   User,
   Sparkles,
+  BookOpen,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { StudentEntryData } from '../pages/EntryFormPage';
 import { toBengaliDigits } from '../utils/bengaliUtils';
+import { Link } from '../hooks/useRouter';
 
 interface FeedbackBoxProps {
   studentEntry: StudentEntryData | null;
@@ -276,6 +279,29 @@ export const FeedbackBox: React.FC<FeedbackBoxProps> = ({ studentEntry }) => {
               </div>
             </form>
           )}
+
+          {/* Footer links: আমাদের সম্পর্কে & গোপনীয়তা নীতি */}
+          <div
+            className={`mt-6 pt-5 border-t flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm font-heading font-semibold ${
+              isDark ? 'border-white/10 text-slate-300' : 'border-slate-200 text-slate-700'
+            }`}
+          >
+            <Link
+              href="/about"
+              className={`inline-flex items-center gap-1.5 hover:underline cursor-pointer transition-colors ${isDark ? 'hover:text-[#00D2FF]' : 'hover:text-[#006B98]'}`}
+            >
+              <BookOpen className="w-4 h-4 shrink-0" />
+              <span>আমাদের সম্পর্কে</span>
+            </Link>
+            <span className="opacity-40">•</span>
+            <Link
+              href="/privacy"
+              className={`inline-flex items-center gap-1.5 hover:underline cursor-pointer transition-colors ${isDark ? 'hover:text-[#00D2FF]' : 'hover:text-[#006B98]'}`}
+            >
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span>গোপনীয়তা নীতি</span>
+            </Link>
+          </div>
         </div>
       </div>
     </section>

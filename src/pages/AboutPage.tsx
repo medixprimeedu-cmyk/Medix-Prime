@@ -1,43 +1,42 @@
 import React from 'react';
 import {
   ArrowLeft,
-  Sparkles,
-  Compass,
-  GraduationCap,
-  BookOpenCheck,
-  Target,
+  Rocket,
+  Award,
+  Lightbulb,
+  ShieldCheck,
 } from 'lucide-react';
 import { Link } from '../hooks/useRouter';
 import { useTheme } from '../hooks/useTheme';
 
 const ABOUT_HIGHLIGHT_BOXES = [
   {
-    icon: Target,
+    icon: Rocket,
     title: 'শিক্ষার্থী-কেন্দ্রিক ডিজিটাল সহায়তা',
     description:
       'এসএসসি ও এইচএসসি পর্যায়ের শিক্ষার্থীদের একাডেমিক হিসাব, বিষয় নির্বাচন ও প্রস্তুতিকে সহজ ও নির্ভুলভাবে উপস্থাপন করা।',
-    accent: '#006B98',
+    accent: '#00D2FF',
   },
   {
-    icon: GraduationCap,
+    icon: Award,
     title: 'বাংলাদেশের সকল বিশ্ববিদ্যালয়ের তথ্য',
     description:
       'দেশের সকল পাবলিক, মেডিকেল, প্রকৌশল, কৃষি, জিএসটি গুচ্ছ ও অনুমোদিত বেসরকারি বিশ্ববিদ্যালয়ের বাস্তব ও আপডেট তথ্য সরবরাহ করা।',
-    accent: '#10B981',
+    accent: '#34D399',
   },
   {
-    icon: Compass,
+    icon: Lightbulb,
     title: 'সঠিক ক্যারিয়ার দিকনির্দেশনা',
     description:
       'নিজস্ব দক্ষতা, আগ্রহ ও একাডেমিক পটভূমির ভিত্তিতে ভবিষ্যতের উপযুক্ত পেশা ও উচ্চশিক্ষার পথ খুঁজে পেতে সাহায্য করা।',
-    accent: '#F59E0B',
+    accent: '#FBBF24',
   },
   {
-    icon: BookOpenCheck,
+    icon: ShieldCheck,
     title: 'বাস্তবসম্মত ও যাচাইকৃত বিশ্লেষণ',
     description:
       'কোনো অনুমান নয়—সরকারি বোর্ড ও বিশ্ববিদ্যালয়ের অফিসিয়াল নীতিমালার আলোকে শিক্ষার্থীদের জন্য স্বচ্ছ দিকনির্দেশনা প্রদান।',
-    accent: '#8B5CF6',
+    accent: '#A78BFA',
   },
 ];
 
@@ -52,7 +51,6 @@ export const AboutPage: React.FC = () => {
       }`}
     >
       <div className="max-w-6xl w-full mx-auto space-y-6">
-        {/* Top Back Navigation Link */}
         <div>
           <Link
             href="/"
@@ -67,88 +65,28 @@ export const AboutPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Main Display Card */}
         <div
-          className={`rounded-3xl p-6 sm:p-10 md:p-12 transition-all duration-300 border ${
+          className={`rounded-3xl p-6 sm:p-10 md:p-12 transition-all duration-300 border space-y-8 ${
             isDark
               ? 'bg-[#0B1526]/90 border-[#172740] shadow-[0_20px_50px_rgba(0,0,0,0.4)]'
               : 'bg-white/90 backdrop-blur-md border-slate-200/80 shadow-[0_20px_45px_rgba(15,23,42,0.06)]'
           }`}
         >
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* Left Column: Mission Narrative */}
-            <div className="lg:col-span-7 space-y-5">
-              <div
-                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-heading font-semibold ${
-                  isDark
-                    ? 'bg-[#00D2FF]/15 text-[#00D2FF]'
-                    : 'bg-[#006B98]/10 text-[#006B98]'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>আমাদের পরিচিতি ও লক্ষ্য</span>
-              </div>
-
-              <h1
-                className={`font-heading font-extrabold text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight ${
-                  isDark ? 'text-white' : 'text-[#092C43]'
-                }`}
-              >
-                আমাদের সম্পর্কে
-              </h1>
-
-              <div
-                className={`font-body text-base sm:text-lg leading-[1.85] space-y-4 ${
-                  isDark ? 'text-gray-200' : 'text-[#1E293B]'
-                }`}
-              >
-                <p>
-                  MEDIX PRIME একটি আধুনিক শিক্ষার্থী-কেন্দ্রিক ডিজিটাল প্ল্যাটফর্ম, যার লক্ষ্য প্রযুক্তির মাধ্যমে শিক্ষাকে আরও সহজ, স্মার্ট ও সবার জন্য সহজলভ্য করে তোলা।
-                </p>
-
-                <p>
-                  আমরা বিশ্বাস করি, প্রতিটি শিক্ষার্থীর শেখার সুযোগ, সঠিক দিকনির্দেশনা এবং নিজের ভবিষ্যৎ গড়ার অধিকার রয়েছে।
-                </p>
-
-                <div
-                  className={`pt-4 border-t ${
-                    isDark ? 'border-white/10' : 'border-slate-200'
-                  }`}
-                >
-                  <p
-                    className={`font-heading font-bold text-base sm:text-lg tracking-wide ${
-                      isDark ? 'text-[#00D2FF]' : 'text-[#006B98]'
-                    }`}
-                  >
-                    MEDIX PRIME — Empowering Every Student. Building a Smarter Future.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Illustration */}
-            <div className="lg:col-span-5 flex justify-center items-center">
-              <div className="relative w-full max-w-[400px] aspect-4/3 sm:aspect-square flex items-center justify-center">
-                <div
-                  className={`relative w-full h-full rounded-[45%_55%_65%_35%/45%_45%_55%_55%] overflow-hidden flex items-center justify-center p-3 shadow-2xl transition-transform duration-500 hover:scale-[1.02] border ${
-                    isDark
-                      ? 'bg-[#152433] border-[#2A435C]/60'
-                      : 'bg-[#223945] border-[#334E5C]'
-                  }`}
-                >
-                  <img
-                    src="/assets/aistudio/Screenshot_2026-11-05_203405_acb7f098.png"
-                    alt="MEDIX PRIME Student & Medical Education Illustration"
-                    className="w-full h-full object-cover object-right select-none pointer-events-none scale-110"
-                  />
-                </div>
-              </div>
-            </div>
+          <div className="space-y-2">
+            <h1
+              className={`font-heading font-extrabold text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight ${
+                isDark ? 'text-white' : 'text-[#092C43]'
+              }`}
+            >
+              আমাদের সম্পর্কে
+            </h1>
+            <p className={`font-body text-sm sm:text-base ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              MEDIX PRIME সম্পর্কে বিস্তারিত ও আমাদের প্রধান লক্ষ্যসমূহ।
+            </p>
           </div>
 
-          {/* Structured Pillar Boxes with New Lucide Icons */}
           <div
-            className={`mt-10 pt-8 border-t grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ${
+            className={`pt-6 border-t grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ${
               isDark ? 'border-white/10' : 'border-slate-200'
             }`}
           >

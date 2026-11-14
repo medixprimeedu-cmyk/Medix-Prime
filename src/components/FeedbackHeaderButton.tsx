@@ -5,8 +5,11 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  BookOpen,
+  ShieldCheck,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
+import { Link } from '../hooks/useRouter';
 
 const STUDENT_ENTRY_STORAGE_KEY = 'medix_prime_student_entry';
 
@@ -240,6 +243,31 @@ export const FeedbackHeaderButton: React.FC = () => {
               </button>
             </form>
           )}
+
+          {/* Footer links: আমাদের সম্পর্কে & গোপনীয়তা নীতি */}
+          <div
+            className={`mt-3 pt-3 border-t flex items-center justify-around gap-2 text-xs font-heading font-medium ${
+              isDark ? 'border-white/10 text-slate-300' : 'border-slate-200 text-slate-600'
+            }`}
+          >
+            <Link
+              href="/about"
+              onClick={() => setIsOpen(false)}
+              className={`inline-flex items-center gap-1 hover:underline cursor-pointer ${isDark ? 'hover:text-white' : 'hover:text-slate-900'}`}
+            >
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+              <span>আমাদের সম্পর্কে</span>
+            </Link>
+            <span className="opacity-40">|</span>
+            <Link
+              href="/privacy"
+              onClick={() => setIsOpen(false)}
+              className={`inline-flex items-center gap-1 hover:underline cursor-pointer ${isDark ? 'hover:text-white' : 'hover:text-slate-900'}`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>গোপনীয়তা নীতি</span>
+            </Link>
+          </div>
         </div>
       )}
     </div>

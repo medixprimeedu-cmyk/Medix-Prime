@@ -39,38 +39,8 @@ export const Header: React.FC = () => {
           <MedixPrimeLogo size="md" />
         </a>
 
-        {/* Right: Small Links ('আমাদের সম্পর্কে', 'গোপনীয়তা নীতি'), Feedback, Share, and Theme Toggle Switch */}
+        {/* Right: Feedback, Share, and Theme Toggle Switch */}
         <div className="flex items-center gap-1 sm:gap-2.5 pr-0.5 sm:pr-2">
-          <Link
-            href="/about"
-            className={`text-[10.5px] sm:text-xs font-heading font-medium px-1.5 sm:px-2 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
-              currentPath === '/about'
-                ? isDark
-                  ? 'text-[#00D2FF] font-semibold bg-white/5'
-                  : 'text-[#006B98] font-semibold bg-sky-50'
-                : isDark
-                ? 'text-gray-300 hover:text-white hover:bg-white/5'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            আমাদের সম্পর্কে
-          </Link>
-
-          <Link
-            href="/privacy"
-            className={`text-[10.5px] sm:text-xs font-heading font-medium px-1.5 sm:px-2 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
-              currentPath === '/privacy'
-                ? isDark
-                  ? 'text-[#00D2FF] font-semibold bg-white/5'
-                  : 'text-[#006B98] font-semibold bg-sky-50'
-                : isDark
-                ? 'text-gray-300 hover:text-white hover:bg-white/5'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            গোপনীয়তা নীতি
-          </Link>
-
           <FeedbackHeaderButton />
 
           <ShareMenuButton />
