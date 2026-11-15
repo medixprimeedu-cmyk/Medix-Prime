@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User,
   GraduationCap,
@@ -11,14 +11,24 @@ import {
   AlertCircle,
   CheckCircle2,
   ShieldCheck,
-  Sparkles,
   BookOpenCheck,
   UserPlus,
   LogIn,
+  Trash2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { MedixPrimeLogo } from '../components/MedixPrimeLogo';
 import { useTheme } from '../hooks/useTheme';
+import {
+  clearRegistrationDraft,
+  clearRememberedLogin,
+  findSavedAccount,
+  loadRegistrationDraft,
+  loadRememberedLogin,
+  saveRegistrationDraft,
+  saveRememberedLogin,
+  saveStudentAccountLocally,
+} from '../utils/studentAuthStorage';
 
 export interface StudentEntryData {
   name: string;
@@ -39,23 +49,53 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
   const isDark = theme === 'dark';
 
   const isUpdateMode = Boolean(initialData);
-  const [activeTab, setActiveTab] = useState<'register' | 'login'>('register');
+  const initialRemembered = !isUpdateMode ? loadRememberedLogin() : null;
+  const initialDraft = !isUpdateMode ? loadRegistrationDraft() : null;
 
-  // Registration states
-  const [name, setName] = useState(initialData?.name || '');
-  const [studentClass, setStudentClass] = useState<'SSC' | 'HSC'>(initialData?.studentClass || 'HSC');
-  const [institution, setInstitution] = useState(initialData?.institution || '');
-  const [regPhone, setRegPhone] = useState(initialData?.phone || '');
+  const [activeTab, setActiveTab] = useState<'register' | 'login'>(
+    initialRemembered ? 'login' : 'register'
+  );
+
+  // Registration states (restoring draft automatically if not updating an active session)
+  const [name, setName] = useState(initialData?.name || initialDraft?.name || '');
+  const [studentClass, setStudentClass] = useState<'SSC' | 'HSC'>(
+    initialData?.studentClass || initialDraft?.studentClass || 'HSC'
+  );
+  const [institution, setInstitution] = useState(
+    initialData?.institution || initialDraft?.institution || ''
+  );
+  const [regPhone, setRegPhone] = useState(initialData?.phone || initialDraft?.phone || '');
   const [regPin, setRegPin] = useState('');
   const [showRegPin, setShowRegPin] = useState(false);
 
-  // Login states
-  const [loginPhone, setLoginPhone] = useState('');
-  const [loginPin, setLoginPin] = useState('');
+  // Login & Auto-save states
+  const [rememberedAccount, setRememberedAccount] = useState(initialRemembered);
+  const [loginPhone, setLoginPhone] = useState(initialRemembered?.phone || '');
+  const [loginPin, setLoginPin] = useState(initialRemembered?.pin || '');
   const [showLoginPin, setShowLoginPin] = useState(false);
+  const [autoSaveCredentials, setAutoSaveCredentials] = useState<boolean>(
+    initialRemembered ? initialRemembered.autoSaveEnabled : true
+  );
+  const [draftSavedNotice, setDraftSavedNotice] = useState<boolean>(
+    Boolean(!isUpdateMode && initialDraft && (initialDraft.name || initialDraft.institution || initialDraft.phone))
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-save registration draft fields as the student types
+  useEffect(() => {
+    if (isUpdateMode) return;
+    const hasContent =
+      name.trim().length > 0 || institution.trim().length > 0 || regPhone.trim().length > 0;
+    saveRegistrationDraft({
+      name,
+      studentClass,
+      institution,
+      phone: regPhone,
+    });
+    setDraftSavedNotice(hasContent);
+  }, [name, studentClass, institution, regPhone, isUpdateMode]);
 
   const normalizeDigits = (raw: string) =>
     raw
@@ -74,6 +114,35 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
   const handleTabSwitch = (tab: 'register' | 'login') => {
     setActiveTab(tab);
     setError(null);
+  };
+
+  const finalizeEntry = (studentPayload: StudentEntryData, pin: string) => {
+    clearRegistrationDraft();
+
+    const localSaved = findSavedAccount(studentPayload.phone);
+    const mergedPayload: StudentEntryData = {
+      ...studentPayload,
+      studentPhoto: studentPayload.studentPhoto || localSaved?.studentPhoto,
+    };
+
+    // Always auto-save registration profile locally so account survives server restarts
+    saveStudentAccountLocally({
+      ...mergedPayload,
+      pin,
+    });
+
+    if (autoSaveCredentials) {
+      saveRememberedLogin({
+        phone: mergedPayload.phone,
+        pin,
+        name: mergedPayload.name,
+        autoSaveEnabled: true,
+      });
+    } else {
+      clearRememberedLogin();
+    }
+
+    onSuccess(mergedPayload);
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -123,6 +192,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
       if (!response.ok) {
         if (response.status === 409) {
           setLoginPhone(cleanedBdPhone);
+          setLoginPin(cleanedPin);
         }
         throw new Error(resData.error || 'তথ্য সংরক্ষণে সমস্যা হয়েছে।');
       }
@@ -132,10 +202,11 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
         studentClass,
         institution: trimmedInst,
         phone: cleanedBdPhone,
+        studentPhoto: initialData?.studentPhoto,
         enteredAt: new Date().toISOString(),
       };
 
-      onSuccess(studentPayload);
+      finalizeEntry(studentPayload, cleanedPin);
     } catch (err: any) {
       setError(err?.message || 'তথ্য পাঠাতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
     } finally {
@@ -143,12 +214,11 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
     }
   };
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performDirectLogin = async (phoneInput: string, pinInput: string) => {
     setError(null);
 
-    const cleanedBdPhone = extractBdPhone(loginPhone);
-    const cleanedPin = extractPin(loginPin);
+    const cleanedBdPhone = extractBdPhone(phoneInput);
+    const cleanedPin = extractPin(pinInput);
 
     if (!/^01[3-9]\d{8}$/.test(cleanedBdPhone)) {
       setError('সঠিক ১১ সংখ্যার বাংলাদেশি মোবাইল নাম্বার লিখুন (যেমন: 017XXXXXXXX)।');
@@ -172,16 +242,67 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
       });
 
       const resData = await response.json().catch(() => ({}));
-      if (!response.ok || !resData.student) {
-        throw new Error(resData.error || 'মোবাইল নাম্বার বা পিন সঠিক নয়।');
+
+      if (response.ok && resData.student) {
+        finalizeEntry(resData.student as StudentEntryData, cleanedPin);
+        return;
       }
 
-      onSuccess(resData.student as StudentEntryData);
+      // If server store was reset or doesn't yet have this number, check locally auto-saved registration
+      const localMatch = findSavedAccount(cleanedBdPhone);
+      const isUnregisteredOnServer =
+        response.status === 401 &&
+        typeof resData.error === 'string' &&
+        resData.error.includes('নিবন্ধিত নয়');
+
+      if (localMatch && localMatch.pin === cleanedPin && (isUnregisteredOnServer || !response.ok)) {
+        // Silently re-sync local registration back to server
+        fetch('/api/student-entry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: localMatch.name,
+            studentClass: localMatch.studentClass,
+            institution: localMatch.institution,
+            phone: localMatch.phone,
+            pin: localMatch.pin,
+            mode: 'update',
+          }),
+        }).catch(() => {});
+
+        finalizeEntry(
+          {
+            name: localMatch.name,
+            studentClass: localMatch.studentClass,
+            institution: localMatch.institution,
+            phone: localMatch.phone,
+            studentPhoto: localMatch.studentPhoto,
+            enteredAt: new Date().toISOString(),
+          },
+          cleanedPin
+        );
+        return;
+      }
+
+      throw new Error(resData.error || 'মোবাইল নাম্বার বা পিন সঠিক নয়।');
     } catch (err: any) {
       setError(err?.message || 'লগইন করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performDirectLogin(loginPhone, loginPin);
+  };
+
+  const handleClearRemembered = () => {
+    clearRememberedLogin();
+    setRememberedAccount(null);
+    setLoginPhone('');
+    setLoginPin('');
+    setError(null);
   };
 
   return (
@@ -219,16 +340,13 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
               </div>
 
               <div className="space-y-2">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-heading font-bold ${
-                    isDark
-                      ? 'bg-[#00D2FF]/15 text-[#38BDF8] border border-[#00D2FF]/30'
-                      : 'bg-[#006B98]/10 text-[#006B98] border border-[#006B98]/20'
+                <p
+                  className={`text-xs font-heading font-bold tracking-wide ${
+                    isDark ? 'text-[#38BDF8]' : 'text-[#006B98]'
                   }`}
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>শিক্ষার্থী প্রবেশ ফরম</span>
-                </span>
+                  শিক্ষার্থী প্রবেশ পোর্টাল · অটো-সেভ ও পিন লগইন
+                </p>
 
                 <h1
                   className={`font-heading font-extrabold text-2xl sm:text-3xl leading-snug ${
@@ -243,7 +361,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                     isDark ? 'text-slate-300' : 'text-slate-600'
                   }`}
                 >
-                  নতুন শিক্ষার্থী হলে আপনার তথ্য ও একটি পিন নাম্বার দিয়ে রেজিস্ট্রেশন করুন। পূর্বে রেজিস্ট্রেশনকৃত থাকলে লগইন সেক্টরে গিয়ে শুধুমাত্র মোবাইল নাম্বার ও পিন দিয়েই সরাসরি প্রবেশ করতে পারবেন।
+                  নতুন শিক্ষার্থী হলে তথ্য ও পিন দিয়ে রেজিস্ট্রেশন করুন—তথ্য স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে। পরবর্তী সময়ে শুধুমাত্র মোবাইল নাম্বার ও পিন দিয়েই সরাসরি ওয়েবসাইটে প্রবেশ করতে পারবেন।
                 </p>
               </div>
 
@@ -270,7 +388,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span>পিন-ভিত্তিক দ্রুত লগইন ও ব্যক্তিগত তথ্যের সুরক্ষা</span>
+                  <span>অটো-সেভ রেজিস্ট্রেশন ও নাম্বার-পিনে সরাসরি প্রবেশ</span>
                 </div>
               </div>
             </div>
@@ -315,7 +433,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                 }`}
               >
                 <LogIn className="w-4 h-4" />
-                <span>লগইন</span>
+                <span>সরাসরি লগইন</span>
               </button>
             </div>
 
@@ -339,7 +457,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                       isDark ? 'text-[#38BDF8]' : 'text-[#006B98]'
                     }`}
                   >
-                    লগইনে যান
+                    সরাসরি লগইনে যান
                   </button>
                 )}
               </div>
@@ -347,17 +465,30 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
 
             {activeTab === 'register' ? (
               <div>
-                <div className="mb-5">
-                  <h2
-                    className={`font-heading font-extrabold text-xl sm:text-2xl ${
-                      isDark ? 'text-white' : 'text-[#092C43]'
-                    }`}
-                  >
-                    {isUpdateMode ? 'প্রোফাইল ও পিন হালনাগাদ' : 'নতুন শিক্ষার্থী রেজিস্ট্রেশন'}
-                  </h2>
-                  <p className={`text-xs sm:text-sm font-body mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    আপনার তথ্য ও একটি ৪–৬ ডিজিটের পিন নাম্বার সেট করে প্রবেশ করুন
-                  </p>
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h2
+                      className={`font-heading font-extrabold text-xl sm:text-2xl ${
+                        isDark ? 'text-white' : 'text-[#092C43]'
+                      }`}
+                    >
+                      {isUpdateMode ? 'প্রোফাইল ও পিন হালনাগাদ' : 'নতুন শিক্ষার্থী রেজিস্ট্রেশন'}
+                    </h2>
+                    <p className={`text-xs sm:text-sm font-body mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      আপনার তথ্য ও একটি ৪–৬ ডিজিটের পিন নাম্বার সেট করে প্রবেশ করুন
+                    </p>
+                  </div>
+
+                  {!isUpdateMode && draftSavedNotice && (
+                    <span
+                      className={`inline-flex items-center gap-1 text-[11px] font-heading font-semibold ${
+                        isDark ? 'text-emerald-400' : 'text-emerald-700'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>খসড়া অটো-সেভ হচ্ছে</span>
+                    </span>
+                  )}
                 </div>
 
                 <form onSubmit={handleRegisterSubmit} className="space-y-4">
@@ -376,6 +507,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                       <input
                         id="entry-name"
                         type="text"
+                        autoComplete="name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="আপনার পূর্ণ নাম লিখুন"
@@ -439,6 +571,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                       <input
                         id="entry-institution"
                         type="text"
+                        autoComplete="organization"
                         value={institution}
                         onChange={(e) => setInstitution(e.target.value)}
                         placeholder="আপনার স্কুল বা কলেজের পূর্ণ নাম লিখুন"
@@ -468,6 +601,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                         <input
                           id="entry-phone"
                           type="tel"
+                          autoComplete="tel"
                           value={regPhone}
                           onChange={(e) => setRegPhone(e.target.value)}
                           placeholder="017XXXXXXXX"
@@ -496,6 +630,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                           id="entry-pin"
                           type={showRegPin ? 'text' : 'password'}
                           inputMode="numeric"
+                          autoComplete="new-password"
                           maxLength={6}
                           value={regPin}
                           onChange={(e) => setRegPin(e.target.value)}
@@ -519,8 +654,21 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                     </div>
                   </div>
 
+                  {/* Auto-save credentials checkbox */}
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none pt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={autoSaveCredentials}
+                      onChange={(e) => setAutoSaveCredentials(e.target.checked)}
+                      className="w-4 h-4 rounded accent-[#006B98] cursor-pointer"
+                    />
+                    <span className={`text-xs font-heading ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      পরবর্তী সরাসরি লগইনের জন্য মোবাইল নাম্বার ও পিন অটো-সেভ রাখুন
+                    </span>
+                  </label>
+
                   {/* Submit Button */}
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <button
                       type="submit"
                       disabled={isSubmitting}
@@ -550,12 +698,63 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                       isDark ? 'text-white' : 'text-[#092C43]'
                     }`}
                   >
-                    নিবন্ধিত শিক্ষার্থী লগইন
+                    নাম্বার ও পিন দিয়ে সরাসরি লগইন
                   </h2>
                   <p className={`text-xs sm:text-sm font-body mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    পূর্বে রেজিস্ট্রেশন করা থাকলে শুধুমাত্র মোবাইল নাম্বার ও পিন নাম্বার দিয়ে প্রবেশ করুন
+                    পূর্বে রেজিস্ট্রেশন করা থাকলে শুধুমাত্র মোবাইল নাম্বার ও পিন নাম্বার দিয়েই সরাসরি ওয়েবসাইটে প্রবেশ করুন
                   </p>
                 </div>
+
+                {/* One-click Direct Login Card when saved registration exists */}
+                {rememberedAccount && (
+                  <div
+                    className={`mb-5 p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      isDark
+                        ? 'bg-[#060D17] border-[#00D2FF]/35'
+                        : 'bg-sky-50/70 border-sky-200'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className={`text-[11px] font-heading font-bold ${isDark ? 'text-[#38BDF8]' : 'text-[#006B98]'}`}>
+                        সংরক্ষিত রেজিস্ট্রেশন পাওয়া গেছে
+                      </p>
+                      <p className={`text-sm font-heading font-extrabold truncate ${isDark ? 'text-white' : 'text-[#092C43]'}`}>
+                        {rememberedAccount.name || 'শিক্ষার্থী'} ·{' '}
+                        <span className="font-latin">{rememberedAccount.phone}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => performDirectLogin(rememberedAccount.phone, rememberedAccount.pin)}
+                        className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-heading font-bold cursor-pointer transition-all disabled:opacity-60 ${
+                          isDark
+                            ? 'bg-[#00D2FF] text-[#060D17] hover:bg-[#38BDF8]'
+                            : 'bg-[#006B98] text-white hover:bg-[#02557A]'
+                        }`}
+                      >
+                        <span>সরাসরি প্রবেশ করুন</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleClearRemembered}
+                        aria-label="সংরক্ষিত লগইন মুছুন"
+                        title="অন্য নাম্বারে লগইন করুন"
+                        className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                          isDark
+                            ? 'bg-white/5 border-white/10 text-slate-300 hover:text-rose-300 hover:border-rose-400/40'
+                            : 'bg-white border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200'
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   {/* Login Mobile Number */}
@@ -573,6 +772,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                       <input
                         id="login-phone"
                         type="tel"
+                        autoComplete="tel"
                         value={loginPhone}
                         onChange={(e) => setLoginPhone(e.target.value)}
                         placeholder="017XXXXXXXX"
@@ -602,6 +802,7 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                         id="login-pin"
                         type={showLoginPin ? 'text' : 'password'}
                         inputMode="numeric"
+                        autoComplete="current-password"
                         maxLength={6}
                         value={loginPin}
                         onChange={(e) => setLoginPin(e.target.value)}
@@ -624,7 +825,20 @@ export const EntryFormPage: React.FC<EntryFormPageProps> = ({ initialData, onSuc
                     </div>
                   </div>
 
-                  <div className="pt-2">
+                  {/* Auto-save credentials toggle */}
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={autoSaveCredentials}
+                      onChange={(e) => setAutoSaveCredentials(e.target.checked)}
+                      className="w-4 h-4 rounded accent-[#006B98] cursor-pointer"
+                    />
+                    <span className={`text-xs font-heading ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      নাম্বার ও পিন অটো-সেভ করে রাখুন
+                    </span>
+                  </label>
+
+                  <div className="pt-1">
                     <button
                       type="submit"
                       disabled={isSubmitting}

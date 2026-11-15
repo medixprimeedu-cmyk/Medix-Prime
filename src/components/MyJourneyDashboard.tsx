@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Compass,
   GraduationCap,
@@ -13,6 +13,8 @@ import { Link } from '../hooks/useRouter';
 import { useTheme } from '../hooks/useTheme';
 import { StudentEntryData } from '../pages/EntryFormPage';
 import { PomodoroTimerCard } from './PomodoroTimerCard';
+import { DailyStudyMotivationCard } from './DailyStudyMotivationCard';
+import { findSavedAccount, saveStudentAccountLocally } from '../utils/studentAuthStorage';
 
 const STUDENT_ENTRY_STORAGE_KEY = 'medix_prime_student_entry';
 
@@ -26,8 +28,12 @@ export const MyJourneyDashboard: React.FC<MyJourneyDashboardProps> = ({ studentE
   const isDark = theme === 'dark';
 
   const [currentEntry, setCurrentEntry] = useState<StudentEntryData | null>(studentEntry);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setCurrentEntry(studentEntry);
+  }, [studentEntry]);
 
   const studentName = currentEntry?.name?.trim() || 'শিক্ষার্থী';
   const studentClassLabel = currentEntry?.studentClass || 'HSC';
@@ -54,6 +60,15 @@ export const MyJourneyDashboard: React.FC<MyJourneyDashboardProps> = ({ studentE
         if (typeof window !== 'undefined' && window.localStorage) {
           try {
             window.localStorage.setItem(STUDENT_ENTRY_STORAGE_KEY, JSON.stringify(updatedEntry));
+            if (updatedEntry.phone) {
+              const saved = findSavedAccount(updatedEntry.phone);
+              if (saved) {
+                saveStudentAccountLocally({
+                  ...saved,
+                  studentPhoto: base64String,
+                });
+              }
+            }
           } catch {
             // Ignore storage errors
           }
@@ -80,8 +95,8 @@ export const MyJourneyDashboard: React.FC<MyJourneyDashboardProps> = ({ studentE
         >
           {/* Top Bar: Short Square Student Image (Left) + Name & Details + Action Buttons */}
           <div
-            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 ${
-              isExpanded ? 'border-b mb-3' : ''
+            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+              isExpanded ? 'pb-3 border-b mb-3' : ''
             } ${isDark ? 'border-white/10' : 'border-slate-200'}`}
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -212,9 +227,10 @@ export const MyJourneyDashboard: React.FC<MyJourneyDashboardProps> = ({ studentE
             </div>
           </div>
 
-          {/* Collapsible Pomodoro Study Timer Section */}
+          {/* Collapsible Daily Study Motivation & Pomodoro Study Timer Section */}
           {isExpanded && (
             <div className="space-y-3 mt-2 pt-2">
+              <DailyStudyMotivationCard />
               <PomodoroTimerCard />
             </div>
           )}
